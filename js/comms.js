@@ -1,16 +1,23 @@
-Puck.debug=3;
+//Puck.debug=3;
+console.log("=============================================")
+console.log("Type 'Puck.debug=3' for full BLE debug info")
+console.log("=============================================")
 
 // FIXME: use UART lib so that we handle errors properly
 const Comms = {
   reset : (opt) => new Promise((resolve,reject) => {
-    var tries = 5;
+    let tries = 8;
+    console.log("<COMMS> reset");
     Puck.write(`\x03\x10reset(${opt=="wipe"?"1":""});\n`,function rstHandler(result) {
       console.log("<COMMS> reset: got "+JSON.stringify(result));
       if (result===null) return reject("Connection failed");
       if (result=="" && (tries-- > 0)) {
         console.log(`<COMMS> reset: no response. waiting ${tries}...`);
         Puck.write("\x03",rstHandler);
-      } else setTimeout(resolve,250);
+      } else {
+        console.log(`<COMMS> reset: complete.`);
+        setTimeout(resolve,250);
+      }
     });
   }),
   uploadApp : (app,skipReset) => { // expects an apps.json structure (i.e. with `storage`)
@@ -133,7 +140,7 @@ const Comms = {
       return cmd.replace('\u0001', '\\x01')
     }).join("");
     console.log("<COMMS> removeApp", cmds);
-    return Comms.reset().then(new Promise((resolve,reject) => {
+    return Comms.reset().then(() => new Promise((resolve,reject) => {
       Puck.write(`\x03\x10E.showMessage('Erasing\\n${app.id}...')${cmds}\x10E.showMessage('Hold BTN3\\nto reload')\n`,(result) => {
         Progress.hide({sticky:true});
         if (result===null) return reject("");
@@ -148,7 +155,7 @@ const Comms = {
     console.log("<COMMS> removeAllApps start");
     Progress.show({title:"Removing all apps",percent:"animate",sticky:true});
     return new Promise((resolve,reject) => {
-      var timeout = 5;
+      let timeout = 5;
       function handleResult(result,err) {
         console.log("<COMMS> removeAllApps: received "+JSON.stringify(result));
         if (result=="" && (timeout--)) {
@@ -164,8 +171,8 @@ const Comms = {
           } else resolve();
         }
       }
-    // Use write with newline here so we wait for it to finish
-      var cmd = '\x10E.showMessage("Erasing...");require("Storage").eraseAll();Bluetooth.println("OK");reset()\n';
+      // Use write with newline here so we wait for it to finish
+      let cmd = '\x10E.showMessage("Erasing...");require("Storage").eraseAll();Bluetooth.println("OK");reset()\n';
       Puck.write(cmd, handleResult, true /* wait for newline */);
     });
   },
